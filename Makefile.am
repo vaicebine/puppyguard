@@ -15,7 +15,7 @@ libshine_la_SOURCES  = shine/bitstream.c shine/formatbits.c shine/huffman.c \
 			shine/l3bitstream.c shine/l3loop.c shine/l3mdct.c  \
 			shine/l3subband.c shine/layer3.c shine/reservoir.c \
 			shine/tables.c 
-src_icsd_LDADD =  libshine.la
+src_puppyguard_LDADD =  libshine.la
 
 if OMX
 OMX_CFLAGS = -DSTANDALONE -D__STDC_CONSTANT_MACROS -D__STDC_LIMIT_MACROS -DTARGET_POSIX \
@@ -29,18 +29,18 @@ AM_LDFLAGS = -lopenmaxil -lbcm_host -lvcos -lvchiq_arm -lpthread -lrt -lilclient
 		-L/opt/vc/lib/ -L/opt/vc/src/hello_pi/libs/ilclient
 endif
 
-bin_PROGRAMS = src/icsd
-src_icsd_SOURCES = src/main.c src/v4l2.c src/sigfd.c \
+bin_PROGRAMS = src/puppyguard
+src_puppyguard_SOURCES = src/main.c src/v4l2.c src/sigfd.c \
 			src/http.c src/iofd.c src/video.c src/cfg.c src/am.c \
 			src/alsa.c src/audio.c src/codecmp3.c
 if OMX
-src_icsd_SOURCES += src/codecomx.c               
+src_puppyguard_SOURCES += src/codecomx.c               
 else
-src_icsd_SOURCES += src/codeclib.c src/codecjpeg.c
+src_puppyguard_SOURCES += src/codeclib.c src/codecjpeg.c
 endif
 
 
 
-icsdconfdir=$(sysconfdir)/ics
-icsdconf_DATA = ics.cfg
+puppyguardconfdir=$(sysconfdir)/puppyguard
+puppyguardconf_DATA = puppyguard.cfg
 

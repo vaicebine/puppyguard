@@ -2,11 +2,11 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.67])
-AC_INIT(ics, [1.0], [vaicebine@gmail.com])
+AC_INIT(puppyguard, [1.0], [vaicebine@gmail.com])
 
 AC_CONFIG_HEADERS([config.h])
 
-AM_INIT_AUTOMAKE(ics, 1.0)
+AM_INIT_AUTOMAKE(puppyguard, 1.0)
 
 AC_OUTPUT(Makefile)
 

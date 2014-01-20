@@ -1,6 +1,6 @@
-## _ICS_
+## _Puppy Guard_
 
-_Description: ICS is a lightweight Linux IP camera stream server._
+_Description: Puppy Guard is a lightweight Linux IP camera server._
 
 _Feature Highlights:_
 
@@ -9,7 +9,7 @@ _Feature Highlights:_
 - _MJPEG video streaming_
 - _Hardware support for JPEG encoding on Rasspberry Pi_ 
 - _MP3 audio streaming_
-- _Audio VOX_
+- _Audio VOX emulation by removing background noise_
 
 ## Installation
 

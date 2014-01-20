@@ -86,7 +86,7 @@ int main(int argc, char **argv)
 {
     int32_t opt = 0;
     int32_t daemon = 0;
-    char *cfg = SYS_CONF_DIR"/ics/ics.cfg";
+    char *cfg = SYS_CONF_DIR"/puppyguard/puppyguard.cfg";
 
     while ((opt = getopt(argc, argv, "c:dh")) != EOF)
     {
