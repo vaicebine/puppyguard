@@ -22,6 +22,15 @@
 #include <string.h>
 #include <am.h>
 
+typedef struct 
+{
+    uint32_t t1_changes; /* changes for the previous frame*/
+    uint32_t matches;    /* consecutive times t1_changes and t2_changes match */
+    uint8_t *ref_buf;    /* reference buffer */
+} am_context_t;
+
+static am_context_t vad_ctx, motion_detection_ctx;
+
 static uint32_t approximate_median(uint8_t *ref_buf, uint8_t *cur_buf, uint32_t size)
 {
     uint32_t i = 0;
@@ -46,73 +55,57 @@ static uint32_t approximate_median(uint8_t *ref_buf, uint8_t *cur_buf, uint32_t 
     return changes;
 }
 
+static uint8_t compute_am(am_context_t *ctx, 
+                          uint8_t *cur_buf, 
+                          uint32_t size, 
+                          uint32_t threshold,
+                          uint32_t matches)
+{
+    uint32_t t2_changes = 0;    /* changes for the current buffer */
+
+    if (!ctx->ref_buf)
+    {
+        ctx->ref_buf = malloc(size);
+        memcpy(ctx->ref_buf, cur_buf, size);
+    }
+    else
+    {
+        t2_changes = approximate_median(ctx->ref_buf, cur_buf, size);
+        if (((ctx->t1_changes - threshold) <= t2_changes) &&
+            (t2_changes <= (ctx->t1_changes+threshold)))
+        {
+            ctx->matches++;
+            if (ctx->matches >= matches)
+                return 0;
+        }
+        else
+        {
+            ctx->matches = 0;
+        }
+        ctx->t1_changes = t2_changes;
+    }
+
+    return 1;
+
+}
+
 /* Voice activity detection */
 uint8_t am_vad(uint8_t *pcm_buf, uint32_t size, uint32_t threshold)
 {
-    uint32_t t2_changes = 0;        /* changes for the current buffer */
-    static uint32_t t1_changes = 0; /* changes for the previous buffer */
-    static uint32_t matches = 0;    /* consecutive times t1_changes and t2_changes match */
-    static uint8_t *ref_buf = NULL;
-
-    if (!ref_buf)
-    {
-        ref_buf = malloc(size);
-        memcpy(ref_buf, pcm_buf, size);
-    }
-    else
-    {
-        t2_changes = approximate_median(ref_buf, pcm_buf, size);
-
-        if (((t1_changes-threshold) <= t2_changes) &&
-            (t2_changes <= (t1_changes+threshold)))
-        {
-            matches++;
-
-            if (matches >= AM_MATCHES_FOR_SILENCE)
-                return 0;
-        }
-        else
-        {
-            /* change number differ, we have motion, reset matches counter */
-            t1_changes = t2_changes;
-            matches = 0;
-        }
-    }
-
-    return 1;
+    return compute_am(&vad_ctx, 
+                      pcm_buf, 
+                      size, 
+                      threshold, 
+                      AM_MATCHES_FOR_SILENCE);
 }
 
-uint8_t am_motion_detection(uint8_t *frame, uint32_t size)
+uint8_t am_motion_detection(uint8_t *frame, uint32_t size, uint32_t threshold)
 {
-    uint32_t t2_changes = 0;        /* changes for the current frame*/
-    static uint32_t t1_changes = 0; /* changes for the previous frame*/
-    static uint32_t matches = 0;    /* consecutive times t1_changes and t2_changes match */
-    static uint8_t *ref_frame = NULL;
-
-    if (!ref_frame)
-    {
-        ref_frame = malloc(size);
-        memcpy(ref_frame, frame, size);
-    }
-    else
-    {
-
-        t2_changes = approximate_median(ref_frame, frame, size);
-        if (t2_changes == t1_changes)
-        {
-            matches++;
-
-            if (matches >= AM_MATCHES_FOR_STATIC)
-                return 0;
-        }
-        else
-        {
-            /* change number differ, we have motion, reset matches counter */
-            t1_changes = t2_changes;
-            matches = 0;
-        }
-    }
-
-    return 1;
+    return compute_am(&motion_detection_ctx, 
+                      frame, 
+                      size, 
+                      threshold, 
+                      AM_MATCHES_FOR_STATIC);
 }
+
 

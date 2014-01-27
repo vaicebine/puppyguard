@@ -18,10 +18,15 @@
  */
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 #include <stdint.h>
 #include <poll.h>
 #include <netinet/in.h>
 #include <sys/time.h>
+#include <syslog.h>
 
 #include <video.h>
 #include <v4l2.h>
@@ -33,6 +38,8 @@
 
 
 static v4l2_dev_t *v4l2_dev = NULL;
+static motion_settings_t motion_settings;
+
 
 static int32_t video_fd_events_cb(int32_t fd, 
                                   uint16_t revents, 
@@ -72,6 +79,45 @@ static int timeval_subtract(struct timeval *result,
     return x->tv_sec < y->tv_sec;
 }
 
+
+static void send_motion_alert(time_t time, 
+                              uint8_t *jpeg_frame, 
+                              uint32_t jpeg_size)
+{
+    struct tm *tmp = localtime(&time);
+    char filename[64];
+    char cmd[256];
+    int fd = -1;
+
+	strftime(filename, sizeof(filename), "/tmp/%d_%m_%Y_%H_%M_%S.jpg", tmp);
+
+    fd = creat(filename, (S_IWUSR|S_IRUSR|S_IRGRP|S_IROTH));
+    if (fd < 0)
+        return;
+    write(fd, jpeg_frame, jpeg_size);
+    close(fd);
+    syslog(LOG_WARNING, 
+           "Motion detected, send email alert to %s", 
+           motion_settings.smtp_to);
+    if(fork() == 0)
+    {
+        snprintf(cmd, 
+                 sizeof(cmd),
+                 "puppyguard-mail.py %s %s %s %s %s %s %d %s %s",
+                 (motion_settings.smtp_user) ? motion_settings.smtp_user : "0", 
+                 (motion_settings.smtp_pass) ? motion_settings.smtp_pass : "0",
+                 motion_settings.smtp_from,
+                 motion_settings.smtp_to,
+                 (motion_settings.smtp_cc) ? motion_settings.smtp_cc : "0",  
+                 motion_settings.smtp_server, 
+                 motion_settings.smtp_port, 
+                 (motion_settings.smtp_tls) ? "1" : "0",
+                 filename);
+        system(cmd);
+        exit(0);
+    }
+}
+
 static int32_t video_fd_events_cb(int32_t fd, 
                                   uint16_t revents, 
                                   struct timeval *t2, 
@@ -85,7 +131,7 @@ static int32_t video_fd_events_cb(int32_t fd,
     const http_server_t *http_server = http_get_server();
     static struct timeval t1;
     struct timeval delta;
-
+    static uint8_t motion = 0xff;
 
     FIX_UNUSED_ARG(fd);
     FIX_UNUSED_ARG(revents);
@@ -112,16 +158,43 @@ static int32_t video_fd_events_cb(int32_t fd,
         t1.tv_usec = t2->tv_usec;
     }
 
-    if (http_server->video_clients && (!drop))
+    if ((http_server->video_clients && (!drop)) ||
+        motion_settings.enable)
     {
         if ((video_size = capture_video_frame(&video_frame)) > 0)
         {
-            codec_jpeg_compress(video_frame,
-                                video_size, 
-                                &jpeg_frame, 
-                                &jpeg_size);
+            if (motion_settings.enable)
+            {
+                if (am_motion_detection(video_frame, 
+                                        video_size, 
+                                        motion_settings.threshold))
+                {
+                    if (!motion)
+                        motion = 0x0f;
+                }
+                else
+                {
+                    motion = 0;
+                }
+            }
 
-            http_send_jpeg_frame(jpeg_frame, jpeg_size);
+            if (http_server->video_clients || (motion == 0x0f))
+            {
+                codec_jpeg_compress(video_frame,
+                                    video_size, 
+                                    &jpeg_frame, 
+                                    &jpeg_size);
+                if (motion == 0x0f)
+                {
+                    send_motion_alert(t2->tv_sec, jpeg_frame, jpeg_size);
+                    motion = 0xff;
+                }
+
+                if (http_server->video_clients)
+                {
+                    http_send_jpeg_frame(jpeg_frame, jpeg_size);
+                }
+            }
         }
 
         if (jpeg_frame)
@@ -181,6 +254,37 @@ void video_init(void)
     cfg_get_value("video_height", &height, CFG_VALUE_INT32);
     cfg_get_value("video_fps", &fps, CFG_VALUE_INT8);
     cfg_get_value("jpeg_quality", &quality, CFG_VALUE_INT32);
+    cfg_get_value("motion_enable", &motion_settings.enable, CFG_VALUE_BOOL);
+    if (motion_settings.enable)
+    {
+        cfg_get_value("motion_threshold", 
+                      &motion_settings.threshold, 
+                      CFG_VALUE_INT32);
+        cfg_get_value("motion_smtp_user", 
+                      &motion_settings.smtp_user, 
+                      CFG_VALUE_STR);
+        cfg_get_value("motion_smtp_pass", 
+                      &motion_settings.smtp_pass, 
+                      CFG_VALUE_STR);
+        cfg_get_value("motion_smtp_from", 
+                      &motion_settings.smtp_from, 
+                      CFG_VALUE_STR);
+        cfg_get_value("motion_smtp_to", 
+                      &motion_settings.smtp_to, 
+                      CFG_VALUE_STR);
+        cfg_get_value("motion_smtp_cc", 
+                      &motion_settings.smtp_cc, 
+                      CFG_VALUE_STR);
+        cfg_get_value("motion_smtp_server", 
+                      &motion_settings.smtp_server, 
+                      CFG_VALUE_STR);
+        cfg_get_value("motion_smtp_port", 
+                      &motion_settings.smtp_port, 
+                      CFG_VALUE_INT16);
+        cfg_get_value("motion_smtp_tls", 
+                      &motion_settings.smtp_tls, 
+                      CFG_VALUE_BOOL);
+    }
 
     codec_jpeg_init(width, height, quality);
 

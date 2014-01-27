@@ -22,6 +22,8 @@
 #include <poll.h>
 #include <unistd.h>
 #include <signal.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 #include <sys/signalfd.h>
 #include <sys/time.h>
 #include <netinet/in.h>
@@ -59,6 +61,10 @@ static int32_t signal_fd_events_cb(int32_t fd,
     {
         return -1;
     }
+    else if (fdsi.ssi_signo == SIGCHLD)
+    {
+        wait(NULL);
+    }
 
     return 0;
 }
@@ -72,6 +78,7 @@ void sigfd_init(void)
     sigaddset(&mask, SIGINT);
     sigaddset(&mask, SIGQUIT);
     sigaddset(&mask, SIGPIPE);
+    sigaddset(&mask, SIGCHLD);
 
     if (sigprocmask(SIG_BLOCK, &mask, NULL) == -1)
     {

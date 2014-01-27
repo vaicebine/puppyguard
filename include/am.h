@@ -24,7 +24,7 @@
 
 
 uint8_t am_vad(uint8_t *pcm_buf, uint32_t size, uint32_t threshold);
-uint8_t am_motion_detection(uint8_t *frame, uint32_t size);
+uint8_t am_motion_detection(uint8_t *frame, uint32_t size, uint32_t threshold);
 
 #endif /*__AM_H*/
 

@@ -26,6 +26,20 @@
 
 #define VIDEO_DEVICE            "/dev/video0"
 
+typedef struct 
+{
+    uint8_t  enable;
+    uint32_t threshold;
+    char     *smtp_user;
+    char     *smtp_pass;
+    char     *smtp_from;
+    char     *smtp_to;
+    char     *smtp_cc;
+    char     *smtp_server;
+    uint16_t smtp_port;
+    uint8_t  smtp_tls;
+} motion_settings_t;
+
 void video_init(void);
 void video_clean(void);
 int32_t video_get_width(uint32_t *width);
