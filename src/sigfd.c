@@ -36,6 +36,16 @@ static int32_t signal_fd_events_cb(int32_t fd,
                                    uint16_t revents, 
                                    struct timeval *tv, 
                                    void *priv);
+static void sighandler(int sig);
+
+
+static void sighandler(int sig)
+{
+    if (sig == SIGCHLD )
+    {
+        wait(NULL);
+    }
+}
 
 static int32_t signal_fd_events_cb(int32_t fd, 
                                    uint16_t revents, 
@@ -61,10 +71,6 @@ static int32_t signal_fd_events_cb(int32_t fd,
     {
         return -1;
     }
-    else if (fdsi.ssi_signo == SIGCHLD)
-    {
-        wait(NULL);
-    }
 
     return 0;
 }
@@ -78,7 +84,6 @@ void sigfd_init(void)
     sigaddset(&mask, SIGINT);
     sigaddset(&mask, SIGQUIT);
     sigaddset(&mask, SIGPIPE);
-    sigaddset(&mask, SIGCHLD);
 
     if (sigprocmask(SIG_BLOCK, &mask, NULL) == -1)
     {
@@ -89,6 +94,8 @@ void sigfd_init(void)
     fd = signalfd(-1, &mask,  0);
 
     io_fd_add(fd, IO_FD_SIGNAL, POLLIN, signal_fd_events_cb, NULL);
+
+    signal(SIGCHLD, sighandler);
 }
 
 

@@ -166,11 +166,6 @@ static void send_ok_audio_response(http_peer_t *http_peer)
 static void send_ok_html_response(http_peer_t *http_peer)
 {
     char http_buf[1024];
-    uint32_t width = 0;
-    uint32_t height = 0;
-
-    video_get_width(&width);
-    video_get_height(&height);
 
     snprintf(http_buf, 
              sizeof(http_buf),
@@ -180,11 +175,8 @@ static void send_ok_html_response(http_peer_t *http_peer)
              "<!DOCTYPE HTML>"
              "<html>"
              "<body>"
-             "<video width=\"%d\" height=\"%d\" controls poster=\"/?stream=mjpg\" autoplay>"
-             "<source src=\"/?stream=mp3\" type=\"audio/mp3\" autoplay/>"
-             "</video>"
              "</body>"
-             "</html>", width, height);
+             "</html>");
 
     socket_write(http_peer, http_buf, strlen(http_buf));
 }
@@ -352,21 +344,6 @@ static void handle_connection(http_peer_t *http_peer)
     }
     else if ((strstr((char*)buf, "GET / ")))
     {
-        if (server.credentials)
-        {
-            if (0 == check_authorization(buf, size, &basic))
-            {
-                send_401_response(http_peer);
-                if (basic)
-                {
-                    syslog(LOG_WARNING,
-                           "Failed authentication for html5 stream from %s", 
-                           inet_ntoa(http_peer->saddr.sin_addr));
-                }
-                close_connection(http_peer);
-                return;
-            }
-        }
         send_ok_html_response(http_peer);
     }
     else
