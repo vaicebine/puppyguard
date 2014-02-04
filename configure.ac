@@ -48,6 +48,8 @@ AC_CHECK_HEADERS([linux/videodev2.h], [], [AC_MSG_ERROR(video4linux2 header file
 # Checks for header files.
 AC_CHECK_HEADERS([fcntl.h malloc.h stdint.h stdlib.h string.h sys/ioctl.h sys/time.h unistd.h], [], [AC_MSG_ERROR(header files are required)])
 
+AC_CONFIG_FILES([scripts/puppyguard-mail.py], [chmod +x scripts/puppyguard-mail.py])
+
 # Checks for typedefs, structures, and compiler characteristics.
 AC_TYPE_INT32_T
 AC_TYPE_INT8_T

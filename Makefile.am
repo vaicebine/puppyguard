@@ -44,3 +44,5 @@ endif
 puppyguardconfdir=$(sysconfdir)/puppyguard
 puppyguardconf_DATA = puppyguard.cfg
 
+bin_SCRIPTS = scripts/puppyguard-mail.py
+

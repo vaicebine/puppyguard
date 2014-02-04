@@ -132,6 +132,8 @@ static int32_t video_fd_events_cb(int32_t fd,
     static struct timeval t1;
     struct timeval delta;
     static uint8_t motion = 0xff;
+    static struct timeval t1_motion;
+    static uint32_t photo_count;
 
     FIX_UNUSED_ARG(fd);
     FIX_UNUSED_ARG(revents);
@@ -170,7 +172,11 @@ static int32_t video_fd_events_cb(int32_t fd,
                                         motion_settings.threshold))
                 {
                     if (!motion)
+                    {
                         motion = 0x0f;
+                        t1_motion.tv_sec = t2->tv_sec;
+                        t1_motion.tv_usec = t2->tv_usec;
+                    }
                 }
                 else
                 {
@@ -186,8 +192,20 @@ static int32_t video_fd_events_cb(int32_t fd,
                                     &jpeg_size);
                 if (motion == 0x0f)
                 {
-                    send_motion_alert(t2->tv_sec, jpeg_frame, jpeg_size);
-                    motion = 0xff;
+                    timeval_subtract(&delta, t2, &t1_motion);
+                    if (((delta.tv_usec/1000) > motion_settings.photo_delay) ||
+                        delta.tv_sec)
+                    {
+                        send_motion_alert(t2->tv_sec, jpeg_frame, jpeg_size);
+                        t1_motion.tv_sec = t2->tv_sec;
+                        t1_motion.tv_usec = t2->tv_usec;
+                        photo_count++;
+                        if (photo_count == motion_settings.photo_count)
+                        {
+                            photo_count = 0;
+                            motion = 0xff;
+                        }
+                    }
                 }
 
                 if (http_server->video_clients)
@@ -284,6 +302,12 @@ void video_init(void)
         cfg_get_value("motion_smtp_tls", 
                       &motion_settings.smtp_tls, 
                       CFG_VALUE_BOOL);
+        cfg_get_value("motion_photo_delay", 
+                      &motion_settings.photo_delay, 
+                      CFG_VALUE_INT32);
+        cfg_get_value("motion_photo_count", 
+                      &motion_settings.photo_count, 
+                      CFG_VALUE_INT32);
     }
 
     codec_jpeg_init(width, height, quality);

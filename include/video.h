@@ -38,6 +38,8 @@ typedef struct
     char     *smtp_server;
     uint16_t smtp_port;
     uint8_t  smtp_tls;
+    int32_t  photo_delay;
+    uint32_t photo_count;
 } motion_settings_t;
 
 void video_init(void);
